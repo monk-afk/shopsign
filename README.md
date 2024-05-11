@@ -1,19 +1,14 @@
-# smartshop
-mod for minetest
+Shopsign
+--------
+Shops to sell items.
 
-Licenses: code: LGPL-2.1, media: CC BY-SA-4.0
+Three shop styles: wooden and metal half-nodes, and glass display full-node.
 
-Version: 7.11
+Punch the glass display case to show the carpet
+  - (only shows carpet in 3 of 4 rotations)
 
-Like the title says, this is a smart and easy shop, that will also fit everywhere.
-
-it is a mix of a vending machine, a shop, item frames and light.
-
-You can toogle it unlimited or limited if you have give or creative
-(unlimited will not take or add stuff to its inventory)
-
-The "All" button will limit your stock to the inventory or and the giveline, its on as default.
-
-wifi storage, send to and refill from wifi storages
-
-It also works with pipeworks, mesecon and aliveai
+Attribution
+-----------
+Based on smartshop v7.11 by AiTechEye
+https://github.com/AiTechEye/smartshop
+Without endorsement from the original creator
