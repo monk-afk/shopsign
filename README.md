@@ -9,6 +9,8 @@ Punch the glass display case to show the carpet
 
 Attribution
 -----------
+```
 Based on smartshop v7.11 by AiTechEye
 https://github.com/AiTechEye/smartshop
 Without endorsement from the original creator
+```
