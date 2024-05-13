@@ -1,4 +1,4 @@
-local follow_market_cashflow = minetest.settings:get_bool("money_market_trends) and
+local follow_market_cashflow = minetest.settings:get_bool("money_market_trends") and
         minetest.global_exists("money") == true
 
 local shopsign = {}
