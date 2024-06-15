@@ -1,4 +1,4 @@
-local follow_market_cashflow = minetest.settings:get_bool("money_market_trends") and
+local follow_market_trends = minetest.settings:get_bool("money_market_trends") and
         minetest.global_exists("money") == true
 
 local shopsign = {}
@@ -238,7 +238,6 @@ local receive_fields = function(player, pressed)
 				local stack_to_use="main"
 
 				if name~="" then
-
 					if not pinv:room_for_item("main", stack) then
 						minetest.chat_send_player(pname, "Error: Your inventory is full, exchange aborted.")
 						return
@@ -287,6 +286,7 @@ local receive_fields = function(player, pressed)
 			user[player:get_player_name()]=nil
 		end
 end
+
 
 minetest.register_on_player_receive_fields(function(player, form, pressed)
 	if form=="shopsign:showform" then
@@ -364,7 +364,8 @@ minetest.register_node("shopsign:shop", {
 	paramtype = "light",
 	sunlight_propagates = true,
 	light_source = 10,
-after_place_node = function(pos, placer)
+
+  after_place_node = function(pos, placer)
 		local meta=minetest.get_meta(pos)
 		meta:set_string("owner",placer:get_player_name())
 		meta:set_string("infotext", "Shop by: " .. placer:get_player_name())
@@ -377,7 +378,8 @@ after_place_node = function(pos, placer)
 			meta:set_int("sellall",0)
 		end
 	end,
-on_construct = function(pos)
+
+  on_construct = function(pos)
 		local meta=minetest.get_meta(pos)
 		meta:set_int("state", 0)
 		meta:get_inventory():set_size("main", 32)
@@ -390,28 +392,66 @@ on_construct = function(pos)
 		meta:get_inventory():set_size("give4", 1)
 		meta:get_inventory():set_size("pay4", 1)
 	end,
-on_rightclick = function(pos, node, player, itemstack, pointed_thing)
+
+  on_rightclick = function(pos, node, player, itemstack, pointed_thing)
 		showform(pos,player)
 	end,
-allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+
+  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
 		if stack:get_wear()==0 and (minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true})) then
 		return stack:get_count()
 		end
 		return 0
 	end,
-allow_metadata_inventory_take = function(pos, listname, index, stack, player)
+
+  allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
 		return stack:get_count()
 		end
 		return 0
 	end,
-allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+
+  allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
 		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
 		return count
 		end
 		return 0
 	end,
-can_dig = function(pos, player)
+
+  on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+
+		local inv = meta:get_inventory()
+		local from_stack = inv:get_stack(from_list, from_index)
+		local to_stack = inv:get_stack(to_list, to_index)
+		minetest.log("action", player:get_player_name()..
+				" moves "..from_stack:get_name().." "..from_stack:get_count().. " "..from_list..
+				" to "..to_stack:get_name().." "..to_stack:get_count().." "..to_list..
+				" inside Shopsign owned by " .. shopsign_owner .. " at "..minetest.pos_to_string(pos))
+	end,
+
+  on_metadata_inventory_put = function(pos, listname, index, itemstack, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+		minetest.log("action", player:get_player_name() ..
+			" puts "..itemstack:get_name().." "..itemstack:get_count()..
+			" into slot "..listname..
+      " in Shopsign owned by "..shopsign_owner..
+      " at "..minetest.pos_to_string(pos))
+	end,
+
+  on_metadata_inventory_take = function(pos, listname, index, itemstack, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+		minetest.log("action", player:get_player_name() ..
+			" takes "..itemstack:get_name().." "..itemstack:get_count()..
+			" from slot "..listname..
+      " from Shopsign owned by "..shopsign_owner..
+      " at "..minetest.pos_to_string(pos))
+	end,
+
+  can_dig = function(pos, player)
 		local meta=minetest.get_meta(pos)
 		local inv=meta:get_inventory()
     if ((meta:get_string("owner") == player:get_player_name()
@@ -427,10 +467,10 @@ can_dig = function(pos, player)
           and inv:is_empty("give4"))
         or meta:get_string("owner")=="" then
       update_entity(pos,"clear")
-      return true		end
+      return true
+    end
 	end,
 })
-
 
 
 minetest.register_node("shopsign:shop_metal", {
@@ -450,7 +490,8 @@ minetest.register_node("shopsign:shop_metal", {
 	paramtype = "light",
 	sunlight_propagates = true,
 	light_source = 10,
-after_place_node = function(pos, placer)
+
+  after_place_node = function(pos, placer)
 		local meta=minetest.get_meta(pos)
 		meta:set_string("owner",placer:get_player_name())
 		meta:set_string("infotext", "Shop by: " .. placer:get_player_name())
@@ -462,7 +503,8 @@ after_place_node = function(pos, placer)
 			meta:set_int("sellall",0)
 		end
 	end,
-on_construct = function(pos)
+
+  on_construct = function(pos)
 		local meta=minetest.get_meta(pos)
 		meta:set_int("state", 0)
 		meta:get_inventory():set_size("main", 32)
@@ -475,28 +517,66 @@ on_construct = function(pos)
 		meta:get_inventory():set_size("give4", 1)
 		meta:get_inventory():set_size("pay4", 1)
 	end,
-on_rightclick = function(pos, node, player, itemstack, pointed_thing)
+
+  on_rightclick = function(pos, node, player, itemstack, pointed_thing)
 		showform(pos,player)
 	end,
-allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+
+  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
 		if stack:get_wear()==0 and (minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true})) then
 		return stack:get_count()
 		end
 		return 0
 	end,
-allow_metadata_inventory_take = function(pos, listname, index, stack, player)
+
+  allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
 		return stack:get_count()
 		end
 		return 0
 	end,
-allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+
+  allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
 		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
 		return count
 		end
 		return 0
 	end,
-can_dig = function(pos, player)
+
+  on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+
+		local inv = meta:get_inventory()
+		local from_stack = inv:get_stack(from_list, from_index)
+		local to_stack = inv:get_stack(to_list, to_index)
+		minetest.log("action", player:get_player_name()..
+				" moves "..from_stack:get_name().." "..from_stack:get_count().. " "..from_list..
+				" to "..to_stack:get_name().." "..to_stack:get_count().." "..to_list..
+				" inside Shopsign owned by " .. shopsign_owner .. " at "..minetest.pos_to_string(pos))
+  end,
+
+  on_metadata_inventory_put = function(pos, listname, index, itemstack, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+		minetest.log("action", player:get_player_name() ..
+        " puts "..itemstack:get_name().." "..itemstack:get_count()..
+        " into slot "..listname..
+        " in Shopsign owned by "..shopsign_owner..
+        " at "..minetest.pos_to_string(pos))
+  end,
+
+  on_metadata_inventory_take = function(pos, listname, index, itemstack, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+		minetest.log("action", player:get_player_name() ..
+        " takes "..itemstack:get_name().." "..itemstack:get_count()..
+        " from slot "..listname..
+        " from Shopsign owned by "..shopsign_owner..
+        " at "..minetest.pos_to_string(pos))
+  end,
+
+  can_dig = function(pos, player)
 		local meta=minetest.get_meta(pos)
 		local inv=meta:get_inventory()
     if ((meta:get_string("owner") == player:get_player_name()
@@ -516,8 +596,6 @@ can_dig = function(pos, player)
 		end
 	end,
 })
-
-
 
 
 minetest.register_node("shopsign:display_case", {
@@ -594,24 +672,61 @@ minetest.register_node("shopsign:display_case", {
   on_rightclick = function(pos, node, player, itemstack, pointed_thing)
     showform(pos,player)
   end,
+
   allow_metadata_inventory_put = function(pos, listname, index, stack, player)
     if stack:get_wear()==0 and (minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true})) then
     return stack:get_count()
     end
     return 0
   end,
+
   allow_metadata_inventory_take = function(pos, listname, index, stack, player)
     if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
     return stack:get_count()
     end
     return 0
   end,
+
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
     if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
     return count
     end
     return 0
   end,
+
+  on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+
+		local inv = meta:get_inventory()
+		local from_stack = inv:get_stack(from_list, from_index)
+		local to_stack = inv:get_stack(to_list, to_index)
+		minetest.log("action", player:get_player_name()..
+				" moves "..from_stack:get_name().." "..from_stack:get_count().. " "..from_list..
+				" to "..to_stack:get_name().." "..to_stack:get_count().." "..to_list..
+				" inside Shopsign owned by " .. shopsign_owner .. " at "..minetest.pos_to_string(pos))
+	end,
+
+  on_metadata_inventory_put = function(pos, listname, index, itemstack, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+		minetest.log("action", player:get_player_name() ..
+        " puts "..itemstack:get_name().." "..itemstack:get_count()..
+        " into slot "..listname..
+        " in Shopsign owned by "..shopsign_owner..
+        " at "..minetest.pos_to_string(pos))
+	end,
+
+  on_metadata_inventory_take = function(pos, listname, index, itemstack, player)
+		local meta = minetest.get_meta(pos)
+    local shopsign_owner = meta:get_string("owner")
+		minetest.log("action", player:get_player_name() ..
+        " takes "..itemstack:get_name().." "..itemstack:get_count()..
+        " from slot "..listname..
+        " from Shopsign owned by "..shopsign_owner..
+        " at "..minetest.pos_to_string(pos))
+	end,
+
   can_dig = function(pos, player)
     local meta=minetest.get_meta(pos)
     local inv=meta:get_inventory()
