@@ -1,5 +1,8 @@
 Shopsign
 --------
+
+[![ContentDB](https://content.minetest.net/packages/monk/shopsign/shields/downloads/)](https://content.minetest.net/packages/monk/shopsign/)
+
 Shops to sell items.
 
 Three shop styles: wooden and metal half-nodes, and glass display full-node.

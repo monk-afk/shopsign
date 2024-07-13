@@ -137,7 +137,9 @@ local showform = function(pos,player,re)
 	if re then owner=false end
 	user[uname]=pos
 	if owner then
-		if meta:get_int("type")==0 and not (minetest.check_player_privs(uname, {creative=true}) or minetest.check_player_privs(uname, {give=true})) then
+		if meta:get_int("type") == 0
+        and not (minetest.check_player_privs(uname, {creative=true})
+        or minetest.check_player_privs(uname, {give=true})) then
 			meta:set_int("creative",0)
 			meta:set_int("type",1)
 			creative=0
@@ -224,7 +226,7 @@ local receive_fields = function(player, pressed)
 			end
 
 			local meta=minetest.get_meta(pos)
-			local type=meta:get_int("type")
+			local sign_type=meta:get_int("type")
 			local sellall=meta:get_int("sellall")
 			local inv=meta:get_inventory()
 			local pinv=player:get_inventory()
@@ -244,8 +246,9 @@ local receive_fields = function(player, pressed)
 					elseif not pinv:contains_item("main", pay) then
 						minetest.chat_send_player(pname, "Error: You dont have enough in your inventory to buy this, exchange aborted.")
 						return
-					elseif type==1 and inv:room_for_item("main", pay)==false then
+					elseif sign_type==1 and inv:room_for_item("main", pay)==false then
 						minetest.chat_send_player(pname, "Error: The owners stock is full, cant receive, exchange aborted.")
+            return
 					else
 						if inv:contains_item("main", stack) then
 						elseif sellall==1 and inv:contains_item("give" .. n, stack) then
@@ -262,9 +265,13 @@ local receive_fields = function(player, pressed)
 								end
 							end
 
-							local rastack=inv:remove_item(stack_to_use, stack)
-							pinv:remove_item("main", pay)
-							pinv:add_item("main", rastack)
+              minetest.after(0.2, function(inv, pinv)
+                local rastack = inv:remove_item(stack_to_use, stack)
+                pinv:remove_item("main", pay)
+                pinv:add_item("main", rastack)
+                if sign_type==1 then inv:add_item("main", pay) end
+                if sign_type==0 then inv:add_item("main", rastack) end
+              end, inv, pinv)
 
               local shopsign_owner = meta:get_string("owner")
               minetest.log("action", pname .." paid ".. pay.. " for " .. stack
@@ -273,9 +280,6 @@ local receive_fields = function(player, pressed)
               if follow_market_trends then
                 money_api.economic_indicator(pname, pay, stack, pos, shopsign_owner)
               end
-
-							if type==1 then inv:add_item("main", pay) end
-							if type==0 then inv:add_item("main", rastack) end
 						end
 					end
 				end
@@ -289,22 +293,24 @@ end
 
 
 minetest.register_on_player_receive_fields(function(player, form, pressed)
-	if form=="shopsign:showform" then
+	if form == "shopsign:showform" then
 		receive_fields(player,pressed)
 	end
 end)
 
 
 minetest.register_entity("shopsign:item",{
+	initial_properties = {
     hp_max = 100,
-    visual="wielditem",
-    visual_size={x=.20,y=.20},
+    visual = "wielditem",
+    visual_size = { x = 0.20 , y = 0.20},
     collisionbox = {0,0,0,0,0,0},
-    physical=false,
-    textures={"air"},
-    shopsign=true,
-    type="",
-    immortal=true,
+    physical = false,
+    textures = {"air"},
+    shopsign = true,
+    type = "",
+    immortal = true,
+  },
 
 	on_activate = function(self, staticdata)
 		if tmp.item ~= nil then
@@ -326,16 +332,10 @@ minetest.register_entity("shopsign:item",{
 			self.object:remove()
 		end
 	end,
+
   on_punch = function(self, puncher, time_from_last_punch, tool_capabilities, dir, damage)
     minetest.log("action", "[shopsign] Player "..puncher:get_player_name().." punched shopsign entity")
-      --[[
-        someone damaged the shopsign entity, sometimes fatally, unsure what that does and am unable to replicate
-          2024-04-25 06:11:27: ACTION[Server]: player (id=7371, hp=16) punched LuaEntitySAO "smartshop:item" at (-21,-15016,1184) (id=11717, hp=1), damage=0
-          2024-04-25 06:11:27: ACTION[Server]: player (id=7371, hp=16) punched LuaEntitySAO "smartshop:item" at (-21,-15016,1184) (id=11718, hp=1), damage=0
-          2024-04-25 06:11:27: ACTION[Server]: player (id=7371, hp=16) punched LuaEntitySAO "smartshop:item" at (-21,-15016,1184) (id=11717, hp=0), damage=1
-          2024-04-25 06:11:27: ACTION[Server]: player (id=7371, hp=16) punched LuaEntitySAO "smartshop:item" at (-21,-15016,1184) (id=11718, hp=1), damage=0
-      ]]
-      return
+    return
   end,
 
 	get_staticdata = function(self)
@@ -349,7 +349,6 @@ minetest.register_entity("shopsign:item",{
 
 minetest.register_node("shopsign:shop", {
 	description = "Wooden Shop Sign",
--- Textures of node; +Y(top), -Y(btm), +X(right), -X(left), +Z, -Z
 	tiles = {
     "shopsign_wood_updn.png",
     "shopsign_wood_updn.png",
@@ -399,22 +398,21 @@ minetest.register_node("shopsign:shop", {
 
   allow_metadata_inventory_put = function(pos, listname, index, stack, player)
 		if stack:get_wear()==0 and (minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true})) then
-		return stack:get_count()
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
 		end
 		return 0
 	end,
 
   allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
-		return stack:get_count()
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
 		end
 		return 0
 	end,
 
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
-		return count
-		end
 		return 0
 	end,
 
@@ -475,7 +473,6 @@ minetest.register_node("shopsign:shop", {
 
 minetest.register_node("shopsign:shop_metal", {
 	description = "Metal Shop Sign",
--- Textures of node; +Y(top), -Y(btm), +X(right), -X(left), +Z, -Z
 	tiles = {
     "shopsign_metal_updn.png",
     "shopsign_metal_updn.png",
@@ -524,22 +521,21 @@ minetest.register_node("shopsign:shop_metal", {
 
   allow_metadata_inventory_put = function(pos, listname, index, stack, player)
 		if stack:get_wear()==0 and (minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true})) then
-		return stack:get_count()
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
 		end
 		return 0
 	end,
 
   allow_metadata_inventory_take = function(pos, listname, index, stack, player)
 		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
-		return stack:get_count()
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
 		end
 		return 0
 	end,
 
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-		if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
-		return count
-		end
 		return 0
 	end,
 
@@ -623,8 +619,6 @@ minetest.register_node("shopsign:display_case", {
   },
 
   special_tiles = {"shopsign_display_carpet.png"},
-  -- backface_culling = false,
-  -- scale = 1,
 	groups = {choppy = 1, oddly_breakable_by_hand = 1},
 
   after_place_node = function(pos, placer)
@@ -675,22 +669,21 @@ minetest.register_node("shopsign:display_case", {
 
   allow_metadata_inventory_put = function(pos, listname, index, stack, player)
     if stack:get_wear()==0 and (minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true})) then
-    return stack:get_count()
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
     end
     return 0
   end,
 
   allow_metadata_inventory_take = function(pos, listname, index, stack, player)
     if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
-    return stack:get_count()
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
     end
     return 0
   end,
 
   allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-    if minetest.get_meta(pos):get_string("owner")==player:get_player_name() or minetest.check_player_privs(player:get_player_name(), {protection_bypass=true}) then
-    return count
-    end
     return 0
   end,
 
@@ -748,5 +741,5 @@ minetest.register_node("shopsign:display_case", {
   end,
 })
 
---
+
 minetest.register_alias("smartshop:shop", "shopsign:shop")
