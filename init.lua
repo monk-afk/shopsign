@@ -300,17 +300,15 @@ end)
 
 
 minetest.register_entity("shopsign:item",{
-	initial_properties = {
-    hp_max = 100,
-    visual = "wielditem",
-    visual_size = { x = 0.20 , y = 0.20},
-    collisionbox = {0,0,0,0,0,0},
-    physical = false,
-    textures = {"air"},
-    shopsign = true,
-    type = "",
-    immortal = true,
-  },
+  hp_max = 100,
+  visual = "wielditem",
+  visual_size = { x = 0.20 , y = 0.20},
+  collisionbox = {0,0,0,0,0,0},
+  physical = false,
+  textures = {"air"},
+  shopsign = true,
+  type = "",
+  immortal = true,
 
 	on_activate = function(self, staticdata)
 		if tmp.item ~= nil then
