@@ -219,7 +219,6 @@ local receive_fields = function(player, pressed)
 
       local meta = core.get_meta(pos)
       local sign_type = meta:get_int("type")
-      local sellall = meta:get_int("sellall")
       local inv = meta:get_inventory()
       local pinv = player:get_inventory()
       local pname = player:get_player_name()
@@ -243,8 +242,6 @@ local receive_fields = function(player, pressed)
             return
           else
             if inv:contains_item("main", stack) then
-            elseif sellall == 1 and inv:contains_item("give" .. n, stack) then
-              stack_to_use = "give" .. n
             elseif sign_type == 0 then
               stack_to_use = nil
             else
@@ -357,12 +354,10 @@ core.register_node("shopsign:shop", {
     meta:set_string("owner", placer:get_player_name())
     meta:set_string("infotext", "Shop by: " .. placer:get_player_name())
     meta:set_int("type", 1)
-    meta:set_int("sellall", 1)
 
     if is_creative(placer:get_player_name()) then
       meta:set_int("creative", 1)
       meta:set_int("type", 0)
-      meta:set_int("sellall", 0)
     end
   end,
 
@@ -483,11 +478,9 @@ core.register_node("shopsign:shop_metal", {
     meta:set_string("owner", placer:get_player_name())
     meta:set_string("infotext", "Shop by: " .. placer:get_player_name())
     meta:set_int("type", 1)
-    meta:set_int("sellall", 1)
     if is_creative(placer:get_player_name()) then
       meta:set_int("creative", 1)
       meta:set_int("type", 0)
-      meta:set_int("sellall", 0)
     end
   end,
 
@@ -621,11 +614,9 @@ core.register_node("shopsign:display_case", {
     meta:set_string("owner", placer:get_player_name())
     meta:set_string("infotext", "Shop by: " .. placer:get_player_name())
     meta:set_int("type", 1)
-    meta:set_int("sellall", 1)
     if is_creative(placer:get_player_name()) then
       meta:set_int("creative", 1)
       meta:set_int("type", 0)
-      meta:set_int("sellall", 0)
     end
   end,
 
