@@ -253,6 +253,8 @@ local receive_fields = function(player, pressed)
             if inv:contains_item("main", stack) then
             elseif sellall == 1 and inv:contains_item("give" .. n, stack) then
               stack_to_use = "give" .. n
+						elseif sign_type == 0 then
+							stack_to_use = nil
             else
               core.chat_send_player(pname, "Error: The owners stock is end.")
               check_storage = 1
@@ -265,11 +267,15 @@ local receive_fields = function(player, pressed)
                 end
               end
 
-              local rastack = inv:remove_item(stack_to_use, stack)
-              pinv:remove_item("main", pay)
-              pinv:add_item("main", rastack)
-              if sign_type == 1 then inv:add_item("main", pay) end
-              if sign_type == 0 then inv:add_item("main", rastack) end
+              if sign_type == 0 then
+                pinv:remove_item("main", pay)
+                pinv:add_item("main", stack)
+              else
+                local rastack = inv:remove_item(stack_to_use, stack)
+                pinv:remove_item("main", pay)
+                pinv:add_item("main", rastack)
+                inv:add_item("main", pay)
+              end
 
               local shopsign_owner = meta:get_string("owner")
               core.log("action", pname .. " paid " .. pay .. " for " .. stack
