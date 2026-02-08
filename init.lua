@@ -51,7 +51,7 @@ local update_info = function(pos)
 
   if meta:get_int("type") == 0 then
     meta:set_string("infotext", "Admin Shop")
-    return false
+    return
   end
   local name = ""
   local count = 0
@@ -61,6 +61,10 @@ local update_info = function(pos)
     stuff["name" .. i] = inv:get_stack("give" .. i, 1):get_name()
     stuff["stock" .. i] = gve * stuff["count" .. i]
     stuff["buy" .. i] = 0
+		if stuff["name" .. i] == "" or stuff["count" .. i] == 0 then
+			stuff["buy" .. i] = ""
+			stuff["name" .. i] = ""
+		else
     for ii = 1, 32, 1 do
       name = inv:get_stack("main", ii):get_name()
       count = inv:get_stack("main", ii):get_count()
@@ -68,14 +72,7 @@ local update_info = function(pos)
         stuff["stock" .. i] = stuff["stock" .. i] + count
       end
     end
-    local nstr = (stuff["stock" .. i]/stuff["count" .. i]) .. ""
-    nstr = nstr.split(nstr, ".")
-    stuff["buy" .. i] = tonumber(nstr[1])
-
-    if stuff["name" .. i] == "" or stuff["buy" .. i] == 0 then
-      stuff["buy" .. i] = ""
-      stuff["name" .. i] = ""
-    else
+			stuff["buy" .. i] = math.floor(stuff["stock" .. i] / stuff["count" .. i])
       if string.find(stuff["name" .. i], ":") ~= nil then
         stuff["name" .. i] = stuff["name" .. i].split(stuff["name" .. i], ":")[2]
       end
@@ -84,7 +81,7 @@ local update_info = function(pos)
     end
   end
     meta:set_string("infotext",
-    owner .. "'s Shop:\n"
+		owner .. "'s Shop:" .. "\n"
     .. stuff.buy1 ..  stuff.name1
     .. stuff.buy2 ..  stuff.name2
     .. stuff.buy3 ..  stuff.name3
