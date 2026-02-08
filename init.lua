@@ -45,14 +45,15 @@ end
 
 local update_info = function(pos)
   local shop_meta = core.get_meta(pos)
+    if shop_meta:get_int("type") == 0 then
+      shop_meta:set_string("infotext", "Admin Shop")
+      return
+    end
+
   local shop_inventory = shop_meta:get_inventory()
   local shop_owner = shop_meta:get_string("owner")
   local base_stock = 0
 
-  if meta:get_int("type") == 0 then
-    meta:set_string("infotext", "Admin Shop")
-    return
-  end
   local stack_name = ""
   local stack_count = 0
   local stock_info = {}
