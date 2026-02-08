@@ -90,7 +90,6 @@ local update_info = function(pos)
 end
 
 local update_entity = function(pos, stat)
---clear
   local spos = core.pos_to_string(pos)
   for _, ob in ipairs(core.get_objects_inside_radius(pos, 2)) do
     if ob and ob:get_luaentity() and ob:get_luaentity().shopsign and ob:get_luaentity().pos == spos then
@@ -99,7 +98,6 @@ local update_entity = function(pos, stat)
   end
 
   if stat == "clear" then return end
---update
   local meta = core.get_meta(pos)
   local inv = meta:get_inventory()
   local node = core.get_node(pos)
@@ -111,7 +109,9 @@ local update_entity = function(pos, stat)
     local pos2 = dpos[node.param2 + 1][i]
     if item ~= "" then
 			local e = core.add_entity({x = p.x + pos2.x, y = p.y + pos2.y, z = p.z + pos2.z}, "shopsign:item", item .. ";" .. spos)
-      e:set_yaw(math.pi * 2 - node.param2 * math.pi/2)
+      if e then
+        e:set_yaw(math.pi * 2 - node.param2 * math.pi/2)
+      end
     end
   end
 end
