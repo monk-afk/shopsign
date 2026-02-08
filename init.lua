@@ -253,8 +253,8 @@ local receive_fields = function(player, pressed)
             if inv:contains_item("main", stack) then
             elseif sellall == 1 and inv:contains_item("give" .. n, stack) then
               stack_to_use = "give" .. n
-						elseif sign_type == 0 then
-							stack_to_use = nil
+            elseif sign_type == 0 then
+              stack_to_use = nil
             else
               core.chat_send_player(pname, "Error: The owners stock is end.")
               check_storage = 1
