@@ -3,7 +3,6 @@ local follow_market_trends = core.settings:get_bool("money_market_trends") and
 
 local shopsign = {}
 local user = {}
-local tmp = {}
 local dir = {{x = 0, y = 0, z = -1}, {x = -1, y = 0, z = 0}, {x = 0, y = 0, z = 1}, {x = 1, y = 0, z = 0}}
 local dpos = {
   {{x = 0.2, y = 0.2, z = 0}, {x = -0.2, y = 0.2, z = 0}, {x = 0.2, y = -0.2, z = 0}, {x = -0.2, y = -0.2, z = 0}},
@@ -109,16 +108,12 @@ local update_entity = function(pos, stat)
   local node = core.get_node(pos)
   local dp = dir[node.param2 + 1]
   if not dp then return end
-  pos.x = pos.x + dp.x * 0.01
-  pos.y = pos.y + dp.y * 6.5/16
-  pos.z = pos.z + dp.z * 0.01
+	local p = {x = pos.x + dp.x * 0.01, y = pos.y + dp.y * 6.5/16, z = pos.z + dp.z * 0.01}
   for i = 1, 4, 1 do
     local item = inv:get_stack("give" .. i, 1):get_name()
     local pos2 = dpos[node.param2 + 1][i]
     if item ~= "" then
-      tmp.item = item
-      tmp.pos = spos
-      local e = core.add_entity({x = pos.x + pos2.x, y = pos.y + pos2.y, z = pos.z + pos2.z}, "shopsign:item")
+			local e = core.add_entity({x = p.x + pos2.x, y = p.y + pos2.y, z = p.z + pos2.z}, "shopsign:item", item .. ";" .. spos)
       e:set_yaw(math.pi * 2 - node.param2 * math.pi/2)
     end
   end
@@ -260,7 +255,7 @@ local receive_fields = function(player, pressed)
               check_storage = 1
             end
             if not check_storage then
-              for i = 0, 32, 1 do
+							for i = 1, 32, 1 do
                 if pinv:get_stack("main", i):get_name() == inv:get_stack("pay" .. n, 1):get_name() and pinv:get_stack("main", i):get_wear()>0 then
                   core.chat_send_player(pname, "Error: your item is used")
                   return
@@ -315,17 +310,11 @@ core.register_entity("shopsign:item", {
   immortal = true,
 
   on_activate = function(self, staticdata)
-    if tmp.item ~= nil then
-      self.item = tmp.item
-      self.pos = tmp.pos
-      tmp = {}
-    else
-      if staticdata ~= nil and staticdata ~= "" then
-        local data = staticdata:split(';')
-        if data and data[1] and data[2] then
-          self.item = data[1]
-          self.pos = data[2]
-        end
+    if staticdata ~= nil and staticdata ~= "" then
+      local data = staticdata:split(';')
+      if data and data[1] and data[2] then
+        self.item = data[1]
+        self.pos = data[2]
       end
     end
     if self.item ~= nil then
