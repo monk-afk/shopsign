@@ -210,6 +210,20 @@ local function showform(pos, player, force_customer_view)
   end, formspec)
 end
 
+local function allow_shop_inventory_move(pos, from_list, from_index, to_list, to_index, count, player)
+  if not player then return 0 end
+
+  local player_name = player:get_player_name()
+  local shop_owner = core.get_meta(pos):get_string("owner")
+
+  if shop_owner == player_name or
+      core.check_player_privs(player_name, {protection_bypass = true}) then
+    return math.min(count, 99)
+  end
+
+  return 0
+end
+
 local function receive_fields(player, pressed)
   local player_name = player:get_player_name()
   local shop_pos = player_positions[player_name]
@@ -434,9 +448,7 @@ core.register_node("shopsign:shop", {
     return 0
   end,
 
-  allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-    return 0
-  end,
+    allow_metadata_inventory_move = allow_shop_inventory_move,
 
   on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
     local shop_meta = core.get_meta(pos)
@@ -558,9 +570,7 @@ core.register_node("shopsign:shop_metal", {
     return 0
   end,
 
-  allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-    return 0
-  end,
+    allow_metadata_inventory_move = allow_shop_inventory_move,
 
   on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
       local shop_meta = core.get_meta(pos)
@@ -707,9 +717,7 @@ core.register_node("shopsign:display_case", {
     return 0
   end,
 
-  allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-    return 0
-  end,
+    allow_metadata_inventory_move = allow_shop_inventory_move,
 
   on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
       local shop_meta = core.get_meta(pos)
