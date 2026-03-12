@@ -221,6 +221,134 @@ local function allow_shop_inventory_move(pos, from_list, from_index, to_list, to
   return 0
 end
 
+  local shop_inventory_lists = {
+    "main",
+    "pay1", "pay2", "pay3", "pay4",
+    "give1", "give2", "give3", "give4",
+  }
+
+  local function can_manage_shop(pos, player)
+    if not player then
+      return false
+    end
+
+    local player_name = player:get_player_name()
+
+    return core.get_meta(pos):get_string("owner") == player_name
+      or core.check_player_privs(player_name, {protection_bypass = true})
+  end
+
+  local function initialize_shop_meta(pos, placer)
+    local shop_meta = core.get_meta(pos)
+    local placer_name = placer:get_player_name()
+
+    shop_meta:set_string("owner", placer_name)
+    shop_meta:set_string("infotext", "Shop by: " .. placer_name)
+    shop_meta:set_int("type", 1)
+
+    if is_creative(placer_name) then
+      shop_meta:set_int("creative", 1)
+      shop_meta:set_int("type", 0)
+    end
+  end
+
+  local function initialize_shop_inventory(pos)
+    local shop_inventory = core.get_meta(pos):get_inventory()
+
+    shop_inventory:set_size("main", 32)
+    shop_inventory:set_size("give1", 1)
+    shop_inventory:set_size("pay1", 1)
+    shop_inventory:set_size("give2", 1)
+    shop_inventory:set_size("pay2", 1)
+    shop_inventory:set_size("give3", 1)
+    shop_inventory:set_size("pay3", 1)
+    shop_inventory:set_size("give4", 1)
+    shop_inventory:set_size("pay4", 1)
+  end
+
+  local function construct_shop(pos)
+    local shop_meta = core.get_meta(pos)
+    shop_meta:set_int("state", 0)
+    initialize_shop_inventory(pos)
+  end
+
+  local function open_shop_formspec(pos, node, player, itemstack, pointed_thing)
+    showform(pos, player)
+  end
+
+  local function allow_shop_inventory_put(pos, listname, index, stack, player)
+    if stack:get_wear() == 0 and can_manage_shop(pos, player) then
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
+    end
+
+    return 0
+  end
+
+  local function allow_shop_inventory_take(pos, listname, index, stack, player)
+    if can_manage_shop(pos, player) then
+      stack:set_count(math.min(stack:get_count(), 99))
+      return stack:get_count()
+    end
+
+    return 0
+  end
+
+  local function log_shop_inventory_move(pos, from_list, from_index, to_list, to_index, count, player)
+    local shop_meta = core.get_meta(pos)
+    local shop_owner = shop_meta:get_string("owner")
+    local shop_inventory = shop_meta:get_inventory()
+    local from_stack = shop_inventory:get_stack(from_list, from_index)
+    local to_stack = shop_inventory:get_stack(to_list, to_index)
+
+    core.log("action", ("%s moves %s %d %s to %s %d %s in Shopsign owned by %s at %s"):format(
+        player:get_player_name(), from_stack:get_name(), from_stack:get_count(), from_list,
+        to_stack:get_name(), to_stack:get_count(), to_list, shop_owner, core.pos_to_string(pos)
+      )
+    )
+  end
+
+  local function log_shop_inventory_put(pos, listname, index, itemstack, player)
+    local shop_owner = core.get_meta(pos):get_string("owner")
+    core.log("action", ("%s puts %s %d into slot %s in Shopsign owned by %s at %s"):format(
+        player:get_player_name(), itemstack:get_name(), itemstack:get_count(),
+        listname, shop_owner, core.pos_to_string(pos) ) )
+  end
+
+  local function log_shop_inventory_take(pos, listname, index, itemstack, player)
+    local shop_owner = core.get_meta(pos):get_string("owner")
+    core.log("action", ("%s takes %s %d in slot %s from Shopsign owned by %s at %s"):format(
+        player:get_player_name(), itemstack:get_name(),itemstack:get_count(),
+        listname, shop_owner, core.pos_to_string(pos)
+      )
+    )
+  end
+
+  local function is_shop_empty(shop_inventory)
+    for i = 1, #shop_inventory_lists do
+      if not shop_inventory:is_empty(shop_inventory_lists[i]) then
+        return false
+      end
+    end
+
+    return true
+  end
+
+  local function can_dig_shop(pos, player)
+    local shop_meta = core.get_meta(pos)
+    local shop_inventory = shop_meta:get_inventory()
+
+    if shop_meta:get_string("owner") == "" then
+      update_entity(pos, "clear")
+      return true
+    end
+
+    if can_manage_shop(pos, player) and is_shop_empty(shop_inventory) then
+      update_entity(pos, "clear")
+      return true
+    end
+  end
+
 local function receive_fields(player, pressed)
   local player_name = player:get_player_name()
   local shop_pos = player_positions[player_name]
@@ -292,7 +420,7 @@ local function receive_fields(player, pressed)
             shop_stack_source = nil
 
           else
-            core.chat_send_player(player_name, "Error: The owners stock is end.")
+            core.chat_send_player(player_name, "Error: This item is out of stock!")
             out_of_stock = 1
           end
 
@@ -316,8 +444,10 @@ local function receive_fields(player, pressed)
             end
 
             local shopsign_owner = shop_meta:get_string("owner")
-              core.log("action", player_name .. " paid " .. price_stack .. " for " .. item_stack
-                .. " from Shopsign owned by " .. shopsign_owner .. " at " .. core.pos_to_string(shop_pos))
+            core.log("action", ("%s paid %s for %s from Shopsign owned by %s at %s"):format(
+                player_name, price_stack, item_stack, shopsign_owner, core.pos_to_string(shop_pos)
+              )
+            )
           end
         end
       end
@@ -391,110 +521,16 @@ core.register_node("shopsign:shop", {
   paramtype = "light",
   sunlight_propagates = true,
   light_source = 10,
-
-  after_place_node = function(pos, placer)
-      local shop_meta = core.get_meta(pos)
-      local placer_name = placer:get_player_name()
-      shop_meta:set_string("owner", placer_name)
-      shop_meta:set_string("infotext", "Shop by: " .. placer_name)
-      shop_meta:set_int("type", 1)
-
-      if is_creative(placer_name) then
-        shop_meta:set_int("creative", 1)
-        shop_meta:set_int("type", 0)
-    end
-  end,
-
-  on_construct = function(pos)
-      local shop_meta = core.get_meta(pos)
-      shop_meta:set_int("state", 0)
-      shop_meta:get_inventory():set_size("main", 32)
-      shop_meta:get_inventory():set_size("give1", 1)
-      shop_meta:get_inventory():set_size("pay1", 1)
-      shop_meta:get_inventory():set_size("give2", 1)
-      shop_meta:get_inventory():set_size("pay2", 1)
-      shop_meta:get_inventory():set_size("give3", 1)
-      shop_meta:get_inventory():set_size("pay3", 1)
-      shop_meta:get_inventory():set_size("give4", 1)
-      shop_meta:get_inventory():set_size("pay4", 1)
-  end,
-
-  on_rightclick = function(pos, node, player, itemstack, pointed_thing)
-    showform(pos, player)
-  end,
-
-  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-    if stack:get_wear() == 0 and (core.get_meta(pos):get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true})) then
-      stack:set_count(math.min(stack:get_count(), 99))
-      return stack:get_count()
-    end
-    return 0
-  end,
-
-  allow_metadata_inventory_take = function(pos, listname, index, stack, player)
-    if core.get_meta(pos):get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true}) then
-      stack:set_count(math.min(stack:get_count(), 99))
-      return stack:get_count()
-    end
-    return 0
-  end,
-
-    allow_metadata_inventory_move = allow_shop_inventory_move,
-
-  on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-    local shop_meta = core.get_meta(pos)
-    local shop_owner = shop_meta:get_string("owner")
-
-    local shop_inventory = shop_meta:get_inventory()
-    local from_stack = shop_inventory:get_stack(from_list, from_index)
-    local to_stack = shop_inventory:get_stack(to_list, to_index)
-    core.log("action", player:get_player_name() ..
-        " moves " .. from_stack:get_name() .. " " .. from_stack:get_count() .. " " .. from_list ..
-        " to " .. to_stack:get_name() .. " " .. to_stack:get_count() .. " " .. to_list ..
-          " inside Shopsign owned by " .. shop_owner .. " at " .. core.pos_to_string(pos))
-  end,
-
-  on_metadata_inventory_put = function(pos, listname, index, itemstack, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-    core.log("action", player:get_player_name() ..
-      " puts " .. itemstack:get_name() .. " " .. itemstack:get_count() ..
-      " into slot " .. listname ..
-        " in Shopsign owned by " .. shop_owner ..
-      " at " .. core.pos_to_string(pos))
-  end,
-
-  on_metadata_inventory_take = function(pos, listname, index, itemstack, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-    core.log("action", player:get_player_name() ..
-      " takes " .. itemstack:get_name() .. " " .. itemstack:get_count() ..
-      " from slot " .. listname ..
-        " from Shopsign owned by " .. shop_owner ..
-      " at " .. core.pos_to_string(pos))
-  end,
-
-  can_dig = function(pos, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_inventory = shop_meta:get_inventory()
-      if ((shop_meta:get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true}))
-            and shop_inventory:is_empty("main")
-            and shop_inventory:is_empty("pay1")
-            and shop_inventory:is_empty("pay2")
-            and shop_inventory:is_empty("pay3")
-            and shop_inventory:is_empty("pay4")
-            and shop_inventory:is_empty("give1")
-            and shop_inventory:is_empty("give2")
-            and shop_inventory:is_empty("give3")
-            and shop_inventory:is_empty("give4"))
-          or shop_meta:get_string("owner") == "" then
-      update_entity(pos, "clear")
-      return true
-    end
-  end,
+  after_place_node = initialize_shop_meta,
+  on_construct = construct_shop,
+  on_rightclick = open_shop_formspec,
+  allow_metadata_inventory_put = allow_shop_inventory_put,
+  allow_metadata_inventory_take = allow_shop_inventory_take,
+  allow_metadata_inventory_move = allow_shop_inventory_move,
+  on_metadata_inventory_move = log_shop_inventory_move,
+  on_metadata_inventory_put = log_shop_inventory_put,
+  on_metadata_inventory_take = log_shop_inventory_take,
+  can_dig = can_dig_shop,
 })
 
 
@@ -514,109 +550,16 @@ core.register_node("shopsign:shop_metal", {
   paramtype = "light",
   sunlight_propagates = true,
   light_source = 10,
-
-  after_place_node = function(pos, placer)
-      local shop_meta = core.get_meta(pos)
-      local placer_name = placer:get_player_name()
-      shop_meta:set_string("owner", placer_name)
-      shop_meta:set_string("infotext", "Shop by: " .. placer_name)
-      shop_meta:set_int("type", 1)
-      if is_creative(placer_name) then
-        shop_meta:set_int("creative", 1)
-        shop_meta:set_int("type", 0)
-    end
-  end,
-
-  on_construct = function(pos)
-      local shop_meta = core.get_meta(pos)
-      shop_meta:set_int("state", 0)
-      shop_meta:get_inventory():set_size("main", 32)
-      shop_meta:get_inventory():set_size("give1", 1)
-      shop_meta:get_inventory():set_size("pay1", 1)
-      shop_meta:get_inventory():set_size("give2", 1)
-      shop_meta:get_inventory():set_size("pay2", 1)
-      shop_meta:get_inventory():set_size("give3", 1)
-      shop_meta:get_inventory():set_size("pay3", 1)
-      shop_meta:get_inventory():set_size("give4", 1)
-      shop_meta:get_inventory():set_size("pay4", 1)
-  end,
-
-  on_rightclick = function(pos, node, player, itemstack, pointed_thing)
-    showform(pos, player)
-  end,
-
-  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-    if stack:get_wear() == 0 and (core.get_meta(pos):get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true})) then
-      stack:set_count(math.min(stack:get_count(), 99))
-      return stack:get_count()
-    end
-    return 0
-  end,
-
-  allow_metadata_inventory_take = function(pos, listname, index, stack, player)
-    if core.get_meta(pos):get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true}) then
-      stack:set_count(math.min(stack:get_count(), 99))
-      return stack:get_count()
-    end
-    return 0
-  end,
-
-    allow_metadata_inventory_move = allow_shop_inventory_move,
-
-  on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-
-      local shop_inventory = shop_meta:get_inventory()
-      local from_stack = shop_inventory:get_stack(from_list, from_index)
-      local to_stack = shop_inventory:get_stack(to_list, to_index)
-    core.log("action", player:get_player_name() ..
-        " moves " .. from_stack:get_name() .. " " .. from_stack:get_count() .. " " .. from_list ..
-        " to " .. to_stack:get_name() .. " " .. to_stack:get_count() .. " " .. to_list ..
-          " inside Shopsign owned by " .. shop_owner .. " at " .. core.pos_to_string(pos))
-  end,
-
-  on_metadata_inventory_put = function(pos, listname, index, itemstack, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-    core.log("action", player:get_player_name() ..
-        " puts " .. itemstack:get_name() .. " " .. itemstack:get_count() ..
-        " into slot " .. listname ..
-          " in Shopsign owned by " .. shop_owner ..
-        " at " .. core.pos_to_string(pos))
-  end,
-
-  on_metadata_inventory_take = function(pos, listname, index, itemstack, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-    core.log("action", player:get_player_name() ..
-        " takes " .. itemstack:get_name() .. " " .. itemstack:get_count() ..
-        " from slot " .. listname ..
-          " from Shopsign owned by " .. shop_owner ..
-        " at " .. core.pos_to_string(pos))
-  end,
-
-  can_dig = function(pos, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_inventory = shop_meta:get_inventory()
-      if ((shop_meta:get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true}))
-            and shop_inventory:is_empty("main")
-            and shop_inventory:is_empty("pay1")
-            and shop_inventory:is_empty("pay2")
-            and shop_inventory:is_empty("pay3")
-            and shop_inventory:is_empty("pay4")
-            and shop_inventory:is_empty("give1")
-            and shop_inventory:is_empty("give2")
-            and shop_inventory:is_empty("give3")
-            and shop_inventory:is_empty("give4"))
-          or shop_meta:get_string("owner") == "" then
-      update_entity(pos, "clear")
-      return true
-    end
-  end,
+  after_place_node = initialize_shop_meta,
+  on_construct = construct_shop,
+  on_rightclick = open_shop_formspec,
+  allow_metadata_inventory_put = allow_shop_inventory_put,
+  allow_metadata_inventory_take = allow_shop_inventory_take,
+  allow_metadata_inventory_move = allow_shop_inventory_move,
+  on_metadata_inventory_move = log_shop_inventory_move,
+  on_metadata_inventory_put = log_shop_inventory_put,
+  on_metadata_inventory_take = log_shop_inventory_take,
+  can_dig = can_dig_shop,
 })
 
 
@@ -651,30 +594,10 @@ core.register_node("shopsign:display_case", {
     local newparam2 = core.dir_to_facedir(placer:get_look_dir())
     core.swap_node(pos, {name = "shopsign:display_case", param2 = newparam2})
 
-      local shop_meta = core.get_meta(pos)
-      local placer_name = placer:get_player_name()
-      shop_meta:set_string("owner", placer_name)
-      shop_meta:set_string("infotext", "Shop by: " .. placer_name)
-      shop_meta:set_int("type", 1)
-      if is_creative(placer_name) then
-        shop_meta:set_int("creative", 1)
-        shop_meta:set_int("type", 0)
-    end
+    initialize_shop_meta(pos, placer)
   end,
 
-  on_construct = function(pos)
-      local shop_meta = core.get_meta(pos)
-      shop_meta:set_int("state", 0)
-      shop_meta:get_inventory():set_size("main", 32)
-      shop_meta:get_inventory():set_size("give1", 1)
-      shop_meta:get_inventory():set_size("pay1", 1)
-      shop_meta:get_inventory():set_size("give2", 1)
-      shop_meta:get_inventory():set_size("pay2", 1)
-      shop_meta:get_inventory():set_size("give3", 1)
-      shop_meta:get_inventory():set_size("pay3", 1)
-      shop_meta:get_inventory():set_size("give4", 1)
-      shop_meta:get_inventory():set_size("pay4", 1)
-  end,
+  on_construct = construct_shop,
 
   on_punch = function(pos, node, puncher, pointed_thing)
     if puncher:is_player() and
@@ -688,82 +611,14 @@ core.register_node("shopsign:display_case", {
     end
   end,
 
-  on_rightclick = function(pos, node, player, itemstack, pointed_thing)
-    showform(pos, player)
-  end,
-
-  allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-    if stack:get_wear() == 0 and (core.get_meta(pos):get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true})) then
-      stack:set_count(math.min(stack:get_count(), 99))
-      return stack:get_count()
-    end
-    return 0
-  end,
-
-  allow_metadata_inventory_take = function(pos, listname, index, stack, player)
-    if core.get_meta(pos):get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true}) then
-      stack:set_count(math.min(stack:get_count(), 99))
-      return stack:get_count()
-    end
-    return 0
-  end,
-
-    allow_metadata_inventory_move = allow_shop_inventory_move,
-
-  on_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-
-      local shop_inventory = shop_meta:get_inventory()
-      local from_stack = shop_inventory:get_stack(from_list, from_index)
-      local to_stack = shop_inventory:get_stack(to_list, to_index)
-    core.log("action", player:get_player_name() ..
-        " moves " .. from_stack:get_name() .. " " .. from_stack:get_count() .. " " .. from_list ..
-        " to " .. to_stack:get_name() .. " " .. to_stack:get_count() .. " " .. to_list ..
-          " inside Shopsign owned by " .. shop_owner .. " at " .. core.pos_to_string(pos))
-  end,
-
-  on_metadata_inventory_put = function(pos, listname, index, itemstack, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-    core.log("action", player:get_player_name() ..
-        " puts " .. itemstack:get_name() .. " " .. itemstack:get_count() ..
-        " into slot " .. listname ..
-          " in Shopsign owned by " .. shop_owner ..
-        " at " .. core.pos_to_string(pos))
-  end,
-
-  on_metadata_inventory_take = function(pos, listname, index, itemstack, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_owner = shop_meta:get_string("owner")
-    core.log("action", player:get_player_name() ..
-        " takes " .. itemstack:get_name() .. " " .. itemstack:get_count() ..
-        " from slot " .. listname ..
-          " from Shopsign owned by " .. shop_owner ..
-        " at " .. core.pos_to_string(pos))
-  end,
-
-  can_dig = function(pos, player)
-      local shop_meta = core.get_meta(pos)
-      local shop_inventory = shop_meta:get_inventory()
-      if ((shop_meta:get_string("owner") == player:get_player_name()
-        or core.check_player_privs(player:get_player_name(), {protection_bypass = true}))
-            and shop_inventory:is_empty("main")
-            and shop_inventory:is_empty("pay1")
-            and shop_inventory:is_empty("pay2")
-            and shop_inventory:is_empty("pay3")
-            and shop_inventory:is_empty("pay4")
-            and shop_inventory:is_empty("give1")
-            and shop_inventory:is_empty("give2")
-            and shop_inventory:is_empty("give3")
-            and shop_inventory:is_empty("give4"))
-          or shop_meta:get_string("owner") == "" then
-      update_entity(pos, "clear")
-      return true
-    end
-  end,
+  on_rightclick = open_shop_formspec,
+  allow_metadata_inventory_put = allow_shop_inventory_put,
+  allow_metadata_inventory_take = allow_shop_inventory_take,
+  allow_metadata_inventory_move = allow_shop_inventory_move,
+  on_metadata_inventory_move = log_shop_inventory_move,
+  on_metadata_inventory_put = log_shop_inventory_put,
+  on_metadata_inventory_take = log_shop_inventory_take,
+  can_dig = can_dig_shop,
 })
 
 
