@@ -92,6 +92,16 @@ local function update_info(pos)
   )
 end
 
+  local function shop_offer_in_stock(shop_inventory, offer_index)
+    local offer_stack = shop_inventory:get_stack("give" .. offer_index, 1)
+
+    if offer_stack:is_empty() then
+      return false
+    end
+
+    return shop_inventory:contains_item("main", offer_stack)
+  end
+
 local function update_entity(pos, stat)
   local shop_pos_string = core.pos_to_string(pos)
   for _, ob in ipairs(core.get_objects_inside_radius(pos, 2)) do
@@ -121,7 +131,7 @@ local function update_entity(pos, stat)
     local display_item = shop_inventory:get_stack("give" .. i, 1):get_name()
     local display_offset = display_offsets[shop_node.param2 + 1][i]
 
-    if display_item ~= "" then
+      if display_item ~= "" and shop_offer_in_stock(shop_inventory, i) then
       local display_entity = core.add_entity({
           x = entity_base_pos.x + display_offset.x,
           y = entity_base_pos.y + display_offset.y,
