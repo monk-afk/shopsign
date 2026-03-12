@@ -1,6 +1,3 @@
-local follow_market_trends = core.settings:get_bool("money_market_trends") and
-    core.global_exists("money") == true
-
 local shopsign = {}
 local player_positions = {}
 local facing_dirs = {{x = 0, y = 0, z = -1}, {x = -1, y = 0, z = 0}, {x = 0, y = 0, z = 1}, {x = 1, y = 0, z = 0}}
@@ -321,10 +318,6 @@ local function receive_fields(player, pressed)
             local shopsign_owner = shop_meta:get_string("owner")
               core.log("action", player_name .. " paid " .. price_stack .. " for " .. item_stack
                 .. " from Shopsign owned by " .. shopsign_owner .. " at " .. core.pos_to_string(shop_pos))
-
-            if follow_market_trends then
-              money_api.economic_indicator(player_name, price_stack, item_stack, shop_pos, shopsign_owner)
-            end
           end
         end
       end
